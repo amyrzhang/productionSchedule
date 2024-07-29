@@ -13,7 +13,8 @@ def process_excel(file_path):
     try:
         # 对文件的处理可根据个人需求自行编写，下面这段为我对表格里的某一列数据进行处理，并将处理后的这列数据单独保存为xls格式的文件。
         # 通过上传的文件名打开Excel文件
-        workbook = pd.read_excel(file_path, engine='openpyxl')
+        column_names = ['type','standards','size1','size2','size3','num']
+        workbook = pd.read_excel(file_path, engine='openpyxl',skiprows=0,names=column_names)
 
         # 文件处理
         s = Solution()
@@ -54,8 +55,21 @@ def save_processed_file():
 if __name__ == '__main__':
     # 创建主窗口
     root = tk.Tk()
-    root.geometry('400x150')
+    root.geometry('800x600')
     root.title("墙板切割计划排程工具")
+
+    # 创建说明文字
+    comment_text = """
+        \n\n\n说明：请上传xlsx格式文件，示例如下：
+        列名分别为：产品类型，技术标准，长，宽，高，数量        
+    """
+    comment_label = tk.Label(root, text=comment_text,fg="red")
+    comment_label.pack()
+
+    # 创建示例数据
+    comment_img = tk.PhotoImage(file="demo.png")
+    label_img = tk.Label(root, image=comment_img)
+    label_img.pack()
 
     # 创建上传按钮
     upload_button = tk.Button(root, text="上传Excel文件", command=upload_file, width=10, height=2)
@@ -77,7 +91,7 @@ if __name__ == '__main__':
 # if __name__ == '__main__':
 #     file_path = "data/test_data.csv"
 #     data = pd.read_csv(file_path)
-#     data.columns = ['type','standards','size1','size2','size3','num']
+#
 #
 #     s = Solution()
 #     plan_table = s.cut(data)
