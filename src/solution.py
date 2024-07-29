@@ -62,6 +62,30 @@ def maximize_cutting(available_sizes, rope_length=6000):
     return products
 
 
+def process_aac_size(row):
+    """
+    【处理砌块逻辑】调整长宽高三列数据，增加一列length，使得结果为 长，宽，600
+    板材：长，600，宽
+    砌块：600，长，宽
+    :param row: pd.Series
+    :return: pd.Series
+    """
+    filter_values = [x for x in row[['size1', 'size2', 'size3']] if x != 600]
+    length, width = max(filter_values), min(filter_values)
+
+    # 砌块尺寸单独处理，只把能被1200整除的边，定义为长边；
+    if row['type'] == 'AAC':
+        if 1200 % length:  # 如果长边不能被整除，交换位置
+            length, width = width, length
+        row['num'] = math.ceil(row['num'] / (1200 // length))  # 修改订单数量 num
+        row['length'] = 1200
+    else:
+        row['length'] = length
+
+    row['size1'], row['size2'], row['size3'] = length, width, 600
+    return row
+
+
 class Solution:
     def __init__(self):
         # 订单表
@@ -73,29 +97,6 @@ class Solution:
         # 生产计划表（输出表）
         self.plan_df = pd.DataFrame()
 
-    def process_aac_size(self,row):
-        """
-        【处理砌块逻辑】调整长宽高三列数据，增加一列length，使得结果为 长，宽，600
-        板材：长，600，宽
-        砌块：600，长，宽
-        :param row: pd.Series
-        :return: pd.Series
-        """
-        filter_values = [x for x in row[['size1', 'size2', 'size3']] if x != 600]
-        length, width = max(filter_values), min(filter_values)
-
-        # 砌块尺寸单独处理，只把能被1200整除的边，定义为长边；
-        if row['type'] == 'AAC':
-            if 1200 % length:  # 如果长边不能被整除，交换位置
-                length, width = width, length
-            # row['num'] = math.ceil(row['num'] / (1200 // length))  # 修改订单数量 num
-            row['length'] = 1200
-        else:
-            row['length'] = length
-
-        row['size1'], row['size2'], row['size3'] = length, width, 600
-        return row
-
     def first_cut(self,data):
         """
         合并至【产品维度】，按长宽降序排列
@@ -103,18 +104,18 @@ class Solution:
         :return: pd.DataFrame
         """
         # 处理砌块
-        df = data.apply(self.process_aac_size, axis=1)
+        df = data.apply(process_aac_size, axis=1)
 
         # 存储砌块原始订单数据映射表，筛选条件：类型为ALC，宽度符合
         self.aac_order_data = df[df['type'] == 'AAC']
 
         # 跨订单聚合到产品粒度
-        grouped_df = df.groupby(['standards', 'length', 'size2'])['num'].sum().reset_index()
-        sorted_df = grouped_df.sort_values(by=['size2', 'length'], ascending=False)
+        grouped_df = df.groupby(['standards', 'length', 'size1', 'size2'])['num'].sum().reset_index()
+        sorted_df = grouped_df.sort_values(by=['size2', 'size1', 'length'], ascending=False)
 
         # 计算【每排数量】和【总排数】
         sorted_df['每排数量'] = 1200 // sorted_df['size2']
-        sorted_df['总排数'] = ceil(sorted_df['num'] // sorted_df['每排数量']).astype(int)
+        sorted_df['总排数'] = ceil(sorted_df['num'] / sorted_df['每排数量']).astype(int)
 
         return sorted_df
 
@@ -133,7 +134,6 @@ class Solution:
         # 【逐宽处理】
         plan_patterns_list = []
         for block_width in width_values:
-            # block_width = 100
             row_num = 1200 // block_width
             filtered_df = df[df['size2'] == block_width]
 
@@ -149,25 +149,22 @@ class Solution:
             for index, row in enumerate(cutting_patterns):
                 for size in row[0]:
                     if size == 1200:
-                        # 遍历AAC订单，塞进去
-                        while filtered_aac_dict:
+                        while filtered_aac_dict:  # 遍历AAC订单，塞进去
                             type_value = 'AAC'
-                            length = filtered_aac_dict[0]['size1']
-                            cut_num = 1200//length
-                            col_num = cut_num * row[1]
-                            num = row_num * col_num * row[2]
-                            filtered_aac_dict[0]['num'] -= num
+                            length,width,height = 600,filtered_aac_dict[0]['size1'],block_width
+                            col_num = 1200//width * row[1]  # 每排数量
+                            filtered_aac_dict[0]['num'] -= row_num * row[1] * row[2]
+
+                            if filtered_aac_dict[0]['num'] <= 0:
+                                filtered_aac_dict.pop(0)
                     else:
-                        type_value, length, col_num = 'ALC', size, row[1]
-                    cutting_patterns_dict = {}  # 逐个取size
-                    cutting_patterns_dict['序号'] = index
-                    cutting_patterns_dict['长'] = size
-                    cutting_patterns_dict['宽'] = 600
-                    cutting_patterns_dict['高'] = block_width
-                    cutting_patterns_dict['每排数量'] = row_num
-                    cutting_patterns_dict['排数'] = row[1]
-                    cutting_patterns_dict['生产模数'] = row[2]
-                    cutting_patterns_dict['数量'] = row_num * row[1] * row[2]
+                        type_value = 'ALC'
+                        length, width, height = size,600,block_width
+                        col_num = row[1]
+                    cutting_patterns_dict = {
+                        '序号': index, '产品类型': type_value,
+                        '长': length, '宽': width, '高': height,
+                        '每排数量': row_num, '排数': col_num, '生产模数': row[2], '数量': row_num * col_num * row[2]}  # 逐个取size
                     plan_patterns_list.append(cutting_patterns_dict)
         cutting_patterns_df = pd.DataFrame(plan_patterns_list)
 
