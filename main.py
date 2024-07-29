@@ -12,4 +12,4 @@ if __name__ == '__main__':
     plan_table = s.cut(data)
 
     print(plan_table)
-    plan_table.to_csv("../data/production_plan.csv", index=False, encoding='gbk')
+    plan_table.to_excel("data/生产计划表.xlsx", index=None, header=True)
