@@ -16,24 +16,32 @@ def second_cut(orders):
     while orders:
         products = maximize_cutting(list(orders.keys()))
 
-        # 【计算每排方案】：如果尺寸数是2+，全组合放一排，如果尺寸数是1，n个放一排
+        # 【计算每排方案】：如果尺寸数是3+，全组合放一排，如果尺寸数是1，n个放一排
         if len(products) == 1:
-            rows = min(6000 // products[0], orders[products[0]])  # 排数
-            mold_cnt = math.ceil(orders[products[0]] / rows)  # 生产模数
+            rows = [min(6000 // products[0], orders[products[0]])]  # 排数
+            mold_cnt: int = math.ceil(orders[products[0]] / rows[0])  # 生产模数
+        elif len(products) == 2 and (6000-sum(products) >= products[-1]):  # 两尺寸各方一个无法放满的情况
+            rows = [1, 1]
+            remaining = 6000-sum(products)
+            rows[0] += remaining // products[0]
+            remaining -= products[0] * (remaining // products[0])
+            rows[1] += remaining // products[1]
+            mold_cnt = min(math.ceil(orders[products[0]] / rows[0]), math.ceil(orders[products[1]] / rows[1]))
         else:
-            rows = 1
+            rows = [1] * len(products)
             mold_cnt = min([orders[size] for size in products])
 
         # 计算【生产模数】，取各产品订单数量的最小值
         cuts.append([products, rows, mold_cnt])
 
-        # 更新订单表
+        # 更新订单表，把已出切割的产品去掉
         remaining_orders = {}
         for key, value in orders.items():
             if key in products:
-                if value - rows * mold_cnt <= 0:  # 若订单耗尽，删掉键
+                i = products.index(key)
+                if value - rows[i] * mold_cnt <= 0:  # 若订单耗尽，删掉键
                     continue
-                remaining_orders[key] = value - rows * mold_cnt
+                remaining_orders[key] = value - rows[i] * mold_cnt
             else:
                 remaining_orders[key] = value
         orders = remaining_orders
@@ -43,7 +51,7 @@ def second_cut(orders):
 
 def maximize_cutting(available_sizes, rope_length=6000):
     """
-    全组合逻辑，寻找一排的全组合切割方案，要求至少有 两个尺寸
+    全组合逻辑，寻找一排的全组合切割方案，要求 3+个尺寸
     :param available_sizes: list，订单产品列表
     :param rope_length: int，胚体长度6000
     :return: list，单模切割方案，对应生产计划表的多行
@@ -147,20 +155,20 @@ class Solution:
 
             # 输出DataFrame，补数据
             for index, row in enumerate(cutting_patterns):
-                for size in row[0]:
+                for i,size in enumerate(row[0]):
                     if size == 1200:
                         while filtered_aac_dict:  # 遍历AAC订单，塞进去
                             type_value = 'AAC'
                             length,width,height = 600,filtered_aac_dict[0]['size1'],block_width
-                            col_num = 1200//width * row[1]  # 每排数量
-                            filtered_aac_dict[0]['num'] -= row_num * row[1] * row[2]
+                            col_num = 1200//width * row[1][i]  # 每排数量
+                            filtered_aac_dict[0]['num'] -= row_num * row[1][i] * row[2]
 
                             if filtered_aac_dict[0]['num'] <= 0:
                                 filtered_aac_dict.pop(0)
                     else:
                         type_value = 'ALC'
                         length, width, height = size,600,block_width
-                        col_num = row[1]
+                        col_num = row[1][i]
                     cutting_patterns_dict = {
                         '序号': index, '产品类型': type_value,
                         '长': length, '宽': width, '高': height,
