@@ -152,6 +152,7 @@ class Solution:
 
         # 【逐宽处理】
         plan_patterns_list = []
+        row_no = 0
         for block_width in width_values:
             row_num = 1200 // block_width
             filtered_df = df[df['size2'] == block_width]
@@ -166,6 +167,7 @@ class Solution:
 
             # 输出DataFrame，补数据
             for index, row in enumerate(cutting_patterns):
+                row_no += 1
                 for i, size in enumerate(row[0]):
                     if size == 1200:
                         while filtered_aac_dict:  # 遍历AAC订单，塞进去
@@ -189,7 +191,7 @@ class Solution:
                         by_product, by_product_num = '', ''
 
                     cutting_patterns_dict = {
-                        '序号': index, '产品类型': type_value,
+                        '序号': row_no, '产品类型': type_value,
                         '长': length, '宽': width, '高': height,
                         '每排数量': row_num, '排数': col_num, '生产模数': row[2],
                         '数量': row_num * col_num * row[2],
