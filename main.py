@@ -55,7 +55,7 @@ def save_processed_file():
 if __name__ == '__main__':
     # 创建主窗口
     root = tk.Tk()
-    root.geometry('800x600')
+    root.geometry('400x300')
     root.title("墙板切割计划排程工具")
 
     # 创建说明文字
@@ -66,10 +66,10 @@ if __name__ == '__main__':
     comment_label = tk.Label(root, text=comment_text,fg="red")
     comment_label.pack()
 
-    # 创建示例数据
-    comment_img = tk.PhotoImage(file="demo.png")
-    label_img = tk.Label(root, image=comment_img)
-    label_img.pack()
+    # # 创建示例数据
+    # comment_img = tk.PhotoImage(file="demo.png")
+    # label_img = tk.Label(root, image=comment_img)
+    # label_img.pack()
 
     # 创建上传按钮
     upload_button = tk.Button(root, text="上传Excel文件", command=upload_file, width=10, height=2)
